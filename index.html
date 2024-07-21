@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Photo Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #2e2e2e; /* Tamno siva pozadina */
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .editor-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+            width: 900px;
+            height: 700px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-bottom: 2px solid #007BFF;
+            background-color: #f7f7f7;
+        }
+
+        .toolbar input[type="file"] {
+            display: none;
+        }
+
+        .toolbar button, .toolbar input[type="color"] {
+            padding: 8px 16px;
+            border: none;
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            margin: 5px;
+            border-radius: 5px;
+        }
+
+        .toolbar button:hover, .toolbar input[type="color"]:hover {
+            background-color: #0056b3;
+        }
+
+        .toolbar button:active {
+            transform: scale(0.98);
+        }
+
+        .toolbar .delete-buttons button {
+            background-color: #FFD700; /* Žuta boja za dugmad */
+        }
+
+        .toolbar .delete-buttons button:hover {
+            background-color: #FFC107; /* Svijetlija žuta boja za hover */
+        }
+
+        #canvas {
+            border: 1px solid #ccc;
+            background: #fff;
+            width: 100%;
+            height: calc(100% - 70px);
+        }
+
+        .color-picker-modal, .text-edit-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            z-index: 1001;
+        }
+
+        .color-picker-modal.active, .text-edit-modal.active {
+            display: block;
+        }
+
+        .color-picker-modal h2, .text-edit-modal h2 {
+            margin-top: 0;
+        }
+
+        .color-picker-modal button, .text-edit-modal button {
+            margin-top: 10px;
+        }
+
+        .text-edit-modal select, .text-edit-modal input[type="checkbox"] {
+            margin: 10px 0;
+        }
+
+        .slide-menu {
+            position: absolute;
+            top: 0;
+            right: -300px;
+            width: 300px;
+            height: 100%;
+            background: #333;
+            color: #fff;
+            transition: right 0.3s ease-in-out;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            padding: 15px;
+            overflow-y: auto;
+            border-radius: 8px;
+        }
+
+        .slide-menu:hover {
+            right: 0;
+        }
+
+        .slide-menu button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            border: none;
+            background-color: #444;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .slide-menu button:hover {
+            background-color: #555;
+        }
+
+        .slide-menu input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .toolbar .delete-buttons button {
+            background-color: #FFD700; /* Žuta boja za dugmad */
+        }
+
+        .toolbar .delete-buttons button:hover {
+            background-color: #FFC107; /* Svijetlija žuta boja za hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="editor-container">
+        <div class="toolbar">
+            <input type="file" id="upload-image" accept="image/*">
+            <button>Upload Image</button>
+            <div class="delete-buttons">
+                <button onclick="removeObject()">Remove Object</button>
+                <button onclick="removeBorder()">Remove Border</button>
+            </div>
+            <button id="paint-button">Paint</button>
+            <button id="add-text-button">Add Text</button>
+        </div>
+        <canvas id="canvas"></canvas>
+        <div class="slide-menu" id="slide-menu">
+            <!-- Ovdje se nalaze ostali alati -->
+            <button onclick="rotateImage()">Rotate</button>
+            <button onclick="flipImage('horizontal')">Flip Horizontal</button>
+            <button onclick="flipImage('vertical')">Flip Vertical</button>
+            <button onclick="cropImage()">Crop</button>
+            <button onclick="applyFilter('grayscale')">Grayscale</button>
+            <button onclick="applyFilter('sepia')">Sepia</button>
+            <button onclick="applyFilter('invert')">Invert</button>
+            <button onclick="draw()">Draw</button>
+            <button onclick="undo()">Undo</button>
+            <button onclick="redo()">Redo</button>
+            <button onclick="saveImage()">Save</button>
+            <button onclick="addShape('rect')">Add Rectangle</button>
+            <button onclick="addShape('circle')">Add Circle</button>
+            <button onclick="addShape('triangle')">Add Triangle</button>
+            <button onclick="addBorder()">Add Border</button>
+            <button onclick="addShadow()">Add Shadow</button>
+            <button onclick="groupObjects()">Group Objects</button>
+            <button onclick="ungroupObjects()">Ungroup Objects</button>
+            <button onclick="sendToBack()">Send to Back</button>
+            <button onclick="bringToFront()">Bring to Front</button>
+            <button onclick="addLine()">Add Line</button>
+            <button onclick="adjustLineWidth(1)">Line Width +</button>
+            <button onclick="adjustLineWidth(-1)">Line Width -</button>
+            <button onclick="adjustLineColor()">Line Color</button>
+            <label for="opacity-range">Opacity:</label>
+            <input type="range" id="opacity-range" min="0" max="100" value="100">
+        </div>
+    </div>
+
+    <div class="color-picker-modal" id="color-picker-modal">
+        <h2>Select Color</h2>
+        <input type="color" id="modal-color-picker">
+        <button onclick="paintShape()">Paint</button>
+        <button onclick="closeColorPicker()">Cancel</button>
+    </div>
+
+    <div class="text-edit-modal" id="text-edit-modal">
+        <h2>Edit Text</h2>
+        <label for="text-color">Text Color:</label>
+        <input type="color" id="text-color">
+        <label for="text-font">Font:</label>
+        <select id="text-font">
+            <option value="Arial">Arial</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Courier New">Courier New</option>
+        </select>
+        <label for="bold-text">Bold:</label>
+        <input type="checkbox" id="bold-text">
+        <button onclick="applyTextChanges()">Apply</button>
+        <button onclick="closeTextEdit()">Cancel</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
+    <script>
+        const canvas = new fabric.Canvas('canvas', {
+            width: 800,
+            height: 600,
+            backgroundColor: '#ffffff'
+        });
+
+        document.getElementById('upload-image').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(f) {
+                const imgElement = new Image();
+                imgElement.src = f.target.result;
+                imgElement.onload = function() {
+                    const imgInstance = new fabric.Image(imgElement, {
+                        scaleX: canvas.width / imgElement.width,
+                        scaleY: canvas.height / imgElement.height
+                    });
+                    canvas.add(imgInstance);
+                    canvas.renderAll();
+                }
+            }
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('paint-button').addEventListener('click', function() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                if (activeObject.type === 'textbox') {
+                    openTextEditModal();
+                } else {
+                    openColorPicker();
+                }
+            } else {
+                alert('Select an object to paint.');
+            }
+        });
+
+        document.getElementById('add-text-button').addEventListener('click', function() {
+            addText();
+        });
+
+        function openColorPicker() {
+            document.getElementById('color-picker-modal').classList.add('active');
+        }
+
+        function closeColorPicker() {
+            document.getElementById('color-picker-modal').classList.remove('active');
+        }
+
+        function paintShape() {
+            const color = document.getElementById('modal-color-picker').value;
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                activeObject.set({ fill: color });
+                canvas.renderAll();
+            }
+            closeColorPicker();
+        }
+
+        function openTextEditModal() {
+            document.getElementById('text-edit-modal').classList.add('active');
+        }
+
+        function closeTextEdit() {
+            document.getElementById('text-edit-modal').classList.remove('active');
+        }
+
+        function applyTextChanges() {
+            const color = document.getElementById('text-color').value;
+            const font = document.getElementById('text-font').value;
+            const isBold = document.getElementById('bold-text').checked;
+            const activeObject = canvas.getActiveObject();
+            if (activeObject && activeObject.type === 'textbox') {
+                activeObject.set({
+                    fill: color,
+                    fontFamily: font,
+                    fontWeight: isBold ? 'bold' : 'normal'
+                });
+                canvas.renderAll();
+            }
+            closeTextEdit();
+        }
+
+        function addText() {
+            const text = new fabric.Textbox('New Text', {
+                left: 100,
+                top: 100,
+                fontSize: 20
+            });
+            canvas.add(text);
+            canvas.renderAll();
+        }
+
+        function removeObject() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.remove(activeObject);
+                canvas.renderAll();
+            }
+        }
+
+        function removeBorder() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                activeObject.set({ stroke: '' });
+                canvas.renderAll();
+            }
+        }
+
+        function addBorder() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                activeObject.set({ stroke: 'black', strokeWidth: 2 });
+                canvas.renderAll();
+            }
+        }
+
+        function addShape(shape) {
+            let obj;
+            switch (shape) {
+                case 'rect':
+                    obj = new fabric.Rect({
+                        left: 100,
+                        top: 100,
+                        fill: 'transparent',
+                        width: 100,
+                        height: 100,
+                        stroke: 'black',
+                        strokeWidth: 2
+                    });
+                    break;
+                case 'circle':
+                    obj = new fabric.Circle({
+                        left: 100,
+                        top: 100,
+                        radius: 50,
+                        fill: 'transparent',
+                        stroke: 'black',
+                        strokeWidth: 2
+                    });
+                    break;
+                case 'triangle':
+                    obj = new fabric.Triangle({
+                        left: 100,
+                        top: 100,
+                        width: 100,
+                        height: 100,
+                        fill: 'transparent',
+                        stroke: 'black',
+                        strokeWidth: 2
+                    });
+                    break;
+            }
+            canvas.add(obj);
+            canvas.renderAll();
+        }
+
+        function addShadow() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                activeObject.set({
+                    shadow: new fabric.Shadow({
+                        color: 'rgba(0,0,0,0.3)',
+                        offsetX: 5,
+                        offsetY: 5,
+                        blur: 10
+                    })
+                });
+                canvas.renderAll();
+            }
+        }
+
+        function groupObjects() {
+            const activeObjects = canvas.getActiveObjects();
+            if (activeObjects.length > 1) {
+                const group = new fabric.Group(activeObjects);
+                canvas.add(group);
+                canvas.discardActiveObject();
+                canvas.renderAll();
+            }
+        }
+
+        function ungroupObjects() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject && activeObject.type === 'group') {
+                const objects = activeObject._objects;
+                canvas.remove(activeObject);
+                objects.forEach(obj => {
+                    canvas.add(obj);
+                });
+                canvas.renderAll();
+            }
+        }
+
+        function sendToBack() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.sendToBack(activeObject);
+                canvas.renderAll();
+            }
+        }
+
+        function bringToFront() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.bringToFront(activeObject);
+                canvas.renderAll();
+            }
+        }
+
+        function addLine() {
+            const line = new fabric.Line([50, 100, 200, 100], {
+                stroke: 'black',
+                strokeWidth: 2
+            });
+            canvas.add(line);
+        }
+
+        function adjustLineWidth(value) {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject && activeObject.type === 'line') {
+                const newWidth = activeObject.strokeWidth + value;
+                if (newWidth > 0) {
+                    activeObject.set('strokeWidth', newWidth);
+                    canvas.renderAll();
+                }
+            }
+        }
+
+        function adjustLineColor() {
+            const color = document.getElementById('color-picker').value;
+            const activeObject = canvas.getActiveObject();
+            if (activeObject && activeObject.type === 'line') {
+                activeObject.set({ stroke: color });
+                canvas.renderAll();
+            }
+        }
+
+        document.getElementById('opacity-range').addEventListener('input', function(e) {
+            const opacity = e.target.value / 100;
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                activeObject.set('opacity', opacity);
+                canvas.renderAll();
+            }
+        });
+    </script>
+</body>
+</html>
