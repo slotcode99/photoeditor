@@ -73,7 +73,7 @@
             height: calc(100% - 70px);
         }
 
-        .color-picker-modal, .text-edit-modal {
+        .color-picker-modal, .text-edit-modal, .save-modal, .shape-properties-modal {
             display: none;
             position: fixed;
             top: 50%;
@@ -87,19 +87,19 @@
             z-index: 1001;
         }
 
-        .color-picker-modal.active, .text-edit-modal.active {
+        .color-picker-modal.active, .text-edit-modal.active, .save-modal.active, .shape-properties-modal.active {
             display: block;
         }
 
-        .color-picker-modal h2, .text-edit-modal h2 {
+        .color-picker-modal h2, .text-edit-modal h2, .save-modal h2, .shape-properties-modal h2 {
             margin-top: 0;
         }
 
-        .color-picker-modal button, .text-edit-modal button {
+        .color-picker-modal button, .text-edit-modal button, .save-modal button, .shape-properties-modal button {
             margin-top: 10px;
         }
 
-        .text-edit-modal select, .text-edit-modal input[type="checkbox"] {
+        .text-edit-modal select, .text-edit-modal input[type="checkbox"], .save-modal select, .shape-properties-modal input[type="color"], .shape-properties-modal input[type="number"] {
             margin: 10px 0;
         }
 
@@ -165,6 +165,8 @@
             </div>
             <button id="paint-button">Paint</button>
             <button id="add-text-button">Add Text</button>
+            <button id="properties-button" onclick="openPropertiesModal()">Properties</button>
+            <button id="save-button" onclick="openSaveModal()">Save</button>
         </div>
         <canvas id="canvas"></canvas>
         <div class="slide-menu" id="slide-menu">
@@ -221,6 +223,33 @@
         <input type="checkbox" id="bold-text">
         <button onclick="applyTextChanges()">Apply</button>
         <button onclick="closeTextEdit()">Cancel</button>
+    </div>
+
+    <div class="save-modal" id="save-modal">
+        <h2>Save Image</h2>
+        <label for="file-format">Format:</label>
+        <select id="file-format">
+            <option value="png">PNG</option>
+            <option value="jpg">JPG</option>
+            <option value="gif">GIF</option>
+            <option value="bmp">BMP</option>
+        </select>
+        <label for="remove-bg">Remove Background:</label>
+        <input type="checkbox" id="remove-bg">
+        <button onclick="saveImage()">Save</button>
+        <button onclick="closeSaveModal()">Cancel</button>
+    </div>
+
+    <div class="shape-properties-modal" id="shape-properties-modal">
+        <h2>Shape Properties</h2>
+        <label for="shape-fill">Fill Color:</label>
+        <input type="color" id="shape-fill">
+        <label for="shape-stroke">Stroke Color:</label>
+        <input type="color" id="shape-stroke">
+        <label for="shape-stroke-width">Stroke Width:</label>
+        <input type="number" id="shape-stroke-width" value="2">
+        <button onclick="applyShapeProperties()">Apply</button>
+        <button onclick="closeShapePropertiesModal()">Cancel</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
@@ -461,6 +490,71 @@
                 activeObject.set({ stroke: color });
                 canvas.renderAll();
             }
+        }
+
+        function openSaveModal() {
+            document.getElementById('save-modal').classList.add('active');
+        }
+
+        function closeSaveModal() {
+            document.getElementById('save-modal').classList.remove('active');
+        }
+
+        function saveImage() {
+            const format = document.getElementById('file-format').value;
+            const removeBg = document.getElementById('remove-bg').checked;
+
+            if (removeBg) {
+                canvas.setBackgroundColor('rgba(0,0,0,0)', canvas.renderAll.bind(canvas));
+            }
+
+            const dataURL = canvas.toDataURL({
+                format: format,
+                quality: 1
+            });
+
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = `image.${format}`;
+            link.click();
+
+            if (removeBg) {
+                canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
+            }
+
+            closeSaveModal();
+        }
+
+        function openPropertiesModal() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                document.getElementById('shape-fill').value = activeObject.fill || '#000000';
+                document.getElementById('shape-stroke').value = activeObject.stroke || '#000000';
+                document.getElementById('shape-stroke-width').value = activeObject.strokeWidth || 1;
+                document.getElementById('shape-properties-modal').classList.add('active');
+            } else {
+                alert('Select an object to edit its properties.');
+            }
+        }
+
+        function closeShapePropertiesModal() {
+            document.getElementById('shape-properties-modal').classList.remove('active');
+        }
+
+        function applyShapeProperties() {
+            const fill = document.getElementById('shape-fill').value;
+            const stroke = document.getElementById('shape-stroke').value;
+            const strokeWidth = document.getElementById('shape-stroke-width').value;
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                activeObject.set({
+                    fill: fill,
+                    stroke: stroke,
+                    strokeWidth: parseInt(strokeWidth)
+                });
+                canvas.renderAll();
+            }
+            closeShapePropertiesModal();
         }
 
         document.getElementById('opacity-range').addEventListener('input', function(e) {
